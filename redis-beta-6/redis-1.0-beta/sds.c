@@ -99,8 +99,7 @@ size_t sdslen(const sds s) {
      //    //***0x0000  就是结构体的地址*///
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     return sh->len;
-}
-
+} 
 
 
 //重定向字符串
@@ -216,11 +215,12 @@ sds sdscpylen(sds s, char *t, size_t len) {
         s = sdsMakeRoomFor(s,len-totlen);
         if (s == NULL) return NULL;
 
-       
+        // 获取结构体名字 
         sh = (void*) (s-(sizeof(struct sdshdr)));
         //更新总长度 后面用起来更加方便
         totlen = sh->free+sh->len;
     }
+    // 真是的拷贝字符串操作
     memcpy(s, t, len);
     s[len] = '\0';
     sh->len = len;
