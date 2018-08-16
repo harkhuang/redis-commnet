@@ -1798,15 +1798,17 @@ int main(int argc, char **argv) {
 #define TEST_SDS_H 1
 #if TEST_SDS_H  
 
-//��sds�����string
+//把sds理解成string
 /*
 proc memory like this
+0x0001 0x0002 0x0003  .... 0x003+free+len
 -----------
-|5    |0    |redis|
+|5    |0      |redis|
 -----------
 ^             ^
 sh            sh->buf
-
+那么结构体的名字就是 0x0000   
+所以在计算长度的时候redis用来骚操作  buf-sizeof(struct sds)
 */
 printf("=test1 sdsnewlen()\n");
 

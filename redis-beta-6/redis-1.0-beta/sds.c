@@ -34,8 +34,16 @@
 
 
 
+// 动态字符串
+// 1.我们调用拷贝和连接的函数时候不需要考虑字符串的大小,
+// 在 确定我们字符串是安全的情况下(不包含多余的0) 字符串我们
+// 可以随便用  只要malloc 或realloc 分配不失败
+// 2.  // TODO:请思考在多线程情况下如何来优化这个文件??
 /* simple dymanic string */
 // simple dymanic string Out Of Memory Abort
+
+
+// 针对不能申请内存的异常处理
 static void sdsOomAbort(void) {
     fprintf(stderr,"SDS: Out Of Memory (SDS_ABORT_ON_OOM defined)\n");
     abort();
@@ -48,8 +56,8 @@ static void sdsOomAbort(void) {
 sds sdsnewlen(const void *init, size_t initlen) {
     struct sdshdr *sh;
 
-    sh = malloc(sizeof(struct sdshdr)+initlen+1);  //�ṹ�峤��+  �ɱ��ַ�����+ �� '\0'  =lenght
-#ifdef SDS_ABORT_ON_OOM    //�ж��ݴ���������
+    sh = malloc(sizeof(struct sdshdr)+initlen+1);  //结构体长度+  可变字符长度+ 符 '\0'  =lenght
+#ifdef SDS_ABORT_ON_OOM    //中断容错处理开启
     if (sh == NULL) sdsOomAbort();
 #else
     if (sh == NULL) return NULL;
@@ -57,80 +65,123 @@ sds sdsnewlen(const void *init, size_t initlen) {
     sh->len = initlen;
     sh->free = 0;
 
-	
+    
     if (initlen) {
-        if (init) memcpy(sh->buf, init, initlen);// ��ԭ���ַ�����������
-        else memset(sh->buf,0,initlen); // ���������������
+        if (init) memcpy(sh->buf, init, initlen);// 将原有字符串拷贝过来
+        else memset(sh->buf,0,initlen); // 否则清空所有内容
     }
     sh->buf[initlen] = '\0';
     return (char*)sh->buf;
 }
 
+
+// 清空字符串,不释放内存
+// 但是由于free保存了字符串可用长度,所以这个字符串可以被复用
 sds sdsempty(void) {
     return sdsnewlen("",0);
 }
 
+
+// 初始化一个字符串 用malloc去申请内存空间
 sds sdsnew(const char *init) {
     size_t initlen = (init == NULL) ? 0 : strlen(init);
     return sdsnewlen(init, initlen);
 }
 
+
+// 获取字符串的长度
 size_t sdslen(const sds s) {
-    struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr))); // ��ȥһ��ֵ���Եõ����ǽṹ�������  ���ṹ����׵�ַ
+     // 减去一个值可以得到的是结构体的名字  即结构体的首地址
+     //  面试题目    
+     //   address1  address1   address1   address1
+     //   0x0001    0x0002     0x0003     0x0004
+     //   在指针前有个逻辑地址  ,  0x0004  -4  = 0x0000  得到的是结构体的名字的地址
+     //    //***0x0000  就是结构体的地址*///
+    struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     return sh->len;
 }
 
+
+
+//重定向字符串
 sds sdsdup(const sds s) {
     return sdsnewlen(s, sdslen(s));
 }
 
+
+// 释放字符串
 void sdsfree(sds s) {
     if (s == NULL) return;
-    free(s-sizeof(struct sdshdr));//������Ȼ�ͷŵ���û������  �?�?
+    free(s-sizeof(struct sdshdr));//这里虽然释放但是没有清零  ??
 }
 
-
+// 获取可用字符长度
 size_t sdsavail(sds s) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
-    return sh->free;//���ؿ��ó���
+    return sh->free;//返回可用长度
 }
 
 
-
+//更新字符实际的长度和可用的长度
 void sdsupdatelen(sds s) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     int reallen = strlen(s);
-    sh->free += (sh->len-reallen);//����ʵ�ʿ��ó���
+    sh->free += (sh->len-reallen);//更新实际可用长度
     sh->len = reallen;
 }
 
 
-// Ϊ���ǵ��ַ���������ռ�
+// 为字符串新申请空间
+// 当剩余空间大于申请值 
+ //->直接返回
+// 当剩余空间不大于新申请的空间
+// -> realloc 一个两倍长度空间
 static sds sdsMakeRoomFor(sds s, size_t addlen) {
     struct sdshdr *sh, *newsh;
     size_t free = sdsavail(s);
     size_t len, newlen;
 
-    if (free >= addlen) return s;//���д������� ֱ�ӷ���
+    // IO优化
+    if (free >= addlen) return s;//空闲大于申请 直接返回
     len = sdslen(s);
     sh = (void*) (s-(sizeof(struct sdshdr)));
     newlen = (len+addlen)*2;
+
+
+    //重新分配内存空间  ,即使是重新申请的
+    // 返回一个新的逻辑地址
+    // 顺便说下realloc 函数  
+    // newsize  > oldsize   添加新的内存块
+    // newsize  < oldsize   改变了索引而已
+
+  // 1）如果当前内存段后面有需要的内存空间，则直接扩展这段内存空间，realloc()将返回原指针。 
+  // 2）如果当前内存段后面的空闲字节不够，那么就使用堆中的第一个能够满足这一要求的内存块，将目前的数据复制到新的位置，并将原来的数据块释放掉，返回新的内存块位置。 
+  // 3）如果申请失败，将返回NULL，此时，原来的指针仍然有效。
+    // IO优化
     newsh = realloc(sh, sizeof(struct sdshdr)+newlen+1);
 
-    if (newsh == NULL) return NULL;
-
+    if (newsh == NULL) return NULL;//分配失败返回null
 
     newsh->free = newlen - len;
     return newsh->buf;
 }
 
+
+//  带有长度的连接字符串
 sds sdscatlen(sds s, void *t, size_t len) {
     struct sdshdr *sh;
     size_t curlen = sdslen(s);
 
+    // 为字符串新添加块长度
+    // makeroom用来realloc进行的性能上的优化
+    // 相当于基于内核IO上的堆操作连接,比用户级
+    // 效率高很多       // IO优化
     s = sdsMakeRoomFor(s,len);
+    // 分配失败返回null
     if (s == NULL) return NULL;
+    // 获取sh的结构体名称
     sh = (void*) (s-(sizeof(struct sdshdr)));
+    // 内存拷贝连接字符串
     memcpy(s+curlen, t, len);
     sh->len = curlen+len;
     sh->free = sh->free-len;
@@ -138,18 +189,36 @@ sds sdscatlen(sds s, void *t, size_t len) {
     return s;
 }
 
+
+// 计算后面字符串的长度   做内存拼接
+// 这个函数只能说调用起来方便了很多
+// 但是本质离不开字符串长度的计算,在不能确定我们
+// 所用字符串长度的时候这个操作还是很危险的
+// 并不安全
 sds sdscat(sds s, char *t) {
     return sdscatlen(s, t, strlen(t));
 }
 
+
+// 拷贝字符串
 sds sdscpylen(sds s, char *t, size_t len) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     size_t totlen = sh->free+sh->len;
 
+    // 如果总长度 小于要拷贝的字符串的长度
+    // 我们realloc函数重新给字符串分配长度
     if (totlen < len) {
+        // 给新字符串搞出来点空间好存放他
+        // 这里给的空间不是死的  而是动态的  
+        // 一个经常用的字符串可能很大 
+        // 使用起来可以省去很多的free操作
+        // 效率更牛 IO优化的考虑点
         s = sdsMakeRoomFor(s,len-totlen);
         if (s == NULL) return NULL;
+
+       
         sh = (void*) (s-(sizeof(struct sdshdr)));
+        //更新总长度 后面用起来更加方便
         totlen = sh->free+sh->len;
     }
     memcpy(s, t, len);
@@ -163,6 +232,8 @@ sds sdscpy(sds s, char *t) {
     return sdscpylen(s, t, strlen(t));
 }
 
+
+// 通过格式化的方式来写入字符串
 sds sdscatprintf(sds s, const char *fmt, ...) {
     va_list ap;
     char *buf, *t;

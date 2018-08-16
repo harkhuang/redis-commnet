@@ -9,11 +9,9 @@
 
 
 
-/**Ë¼¿¼µÄÎÊÌâ***
-1.ÊÂ¼þÁ´±íÈçºÎÍ¬epollÎÄ¼þÃèÊö·û±ä»¯Ïà¹ØÁªµÄ?
-2.ÊÂ¼þÖÐÓÐÁ½¸öÎÄ¼þ´¦ÀíµÄÊÂ¼þ»Ùµôº¯ÊýÒ»¸öÊÇfileFinalerProcÒ»¸öÊÇfileProcÇø±ðÔÚÄÄÀï å
-3.
-
+/**æ€è€ƒçš„é—®é¢˜***
+1.äº‹ä»¶é“¾è¡¨å¦‚ä½•åŒepollæ–‡ä»¶æè¿°ç¬¦å˜åŒ–ç›¸å…³è”çš„?
+2.äº‹ä»¶ä¸­æœ‰ä¸¤ä¸ªæ–‡ä»¶å¤„ç†çš„äº‹ä»¶æ¯æŽ‰å‡½æ•°ä¸€ä¸ªæ˜¯fileFinalerProcä¸€ä¸ªæ˜¯fileProcåŒºåˆ«åœ¨å“ªé‡Œ ?3.
 *****/
 
 #include "ae.h"
@@ -24,6 +22,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 
+// åˆ›å»ºäº‹ä»¶loop
 aeEventLoop *aeCreateEventLoop(void) {
     aeEventLoop *eventLoop;
 
@@ -184,7 +183,7 @@ static aeTimeEvent *aeSearchNearestTimer(aeEventLoop *eventLoop)
 int aeProcessEvents(aeEventLoop *eventLoop, int flags)
 {
     int maxfd = 0, numfd = 0, processed = 0;
-    fd_set rfds, wfds, efds;// ¹ØÐÄµÄÎÄ¼þÃèÊö·ûµÄ¼¯ºÏ
+    fd_set rfds, wfds, efds;// å…³å¿ƒçš„æ–‡ä»¶æè¿°ç¬¦çš„é›†åˆ
     aeFileEvent *fe = eventLoop->fileEventHead;
     aeTimeEvent *te;
     long long maxId;

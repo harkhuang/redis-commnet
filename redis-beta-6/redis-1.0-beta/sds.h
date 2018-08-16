@@ -1,8 +1,8 @@
 /* SDSLib, A C dynamic strings library
 
 
- Redis�ַ�����ʵ�ְ�����sds.c��sds�����򵥶�̬�ַ������С� 
- sdshdr������C�ṹsds.h��ʾRedis�ַ����� 
+ Redis字符串的实现包含在sds.c（sds代表简单动态字符串）中。 
+ sdshdr声明的C结构sds.h表示Redis字符串： 
  struct sdshdr {
 	 long len;
 	 long free;
@@ -11,7 +11,7 @@
 
  
  typedef char *sds; 
- sdsnewlen����ĺ���sds.c����һ���µ�Redis�ַ�����
+ sdsnewlen定义的函数sds.c创建一个新的Redis字符串：
  sds sdsnewlen(const void *init, size_t initlen) {
 	 struct sdshdr *sh; 
 	 sh = zmalloc(sizeof(struct sdshdr)+initlen+1);
@@ -29,42 +29,42 @@
 	 sh->buf[initlen] = '\0';
 	 return (char*)sh->buf;
  }
- ���ס��Redis�ַ��������͵ı���struct sdshdr����sdsnewlen����һ���ַ�ָ��!!
+ 请记住，Redis字符串是类型的变量struct sdshdr。但sdsnewlen返回一个字符指针!!
  
- ����һ�����ɣ���ҪһЩ���͡�
+ 这是一个技巧，需要一些解释。
  
- ������ʹ��sdsnewlen������ʾ����Redis�ַ�����
+ 假设我使用sdsnewlen如下所示创建Redis字符串：
  
  sdsnewlen("redis", 5);
- ��struct sdshdr��Ϊ �ֶ�len��free�ֶ��Լ�buf�ַ����鴴��һ���µ����ͷ����ڴ������
+ 这struct sdshdr将为 字段len和free字段以及buf字符数组创建一个新的类型分配内存变量。
  
  sh = zmalloc(sizeof(struct sdshdr)+initlen+1); // initlen is length of init argument.
- ֮��sdsnewlen�ɹ��ش���һ��Redis���ַ���������������ģ�
+ 之后sdsnewlen成功地创建一个Redis的字符串，结果是这样的：
  
  -----------
  |5|0|redis|
  -----------
  ^	 ^
  sh  sh->buf
- sdsnewlen����sh->buf�������ߡ�
+ sdsnewlen返回sh->buf给调用者。
  
- �������Ҫ�ͷ�ָ���Redis�ַ����������ô��sh��
- ����Ҫָ�룬sh����ֻ��ָ��sh->buf�� 
- ���ܵõ���ָ��sh��sh->buf��
+ 如果你需要释放指向的Redis字符串，你会怎么做sh？
+ 你想要指针，sh但你只有指针sh->buf。 
+ 你能得到的指针sh从sh->buf？
  
- �ǡ�ָ���������������ASCII������ע�⵽��������м�ȥ����long�Ĵ�С����sh->buf�õ�ָ��sh��
+ 是。指针算术。从上面的ASCII艺术中注意到，如果从中减去两个long的大小，则sh->buf得到指针sh。
  
- ��sizeof���γ�ǡ���Ǵ�Сstruct sdshdr��
+ 在sizeof二次长恰好是大小struct sdshdr。
  
- ����sdslen���ܲ�����������ɣ�
+ 看看sdslen功能并看到这个技巧：
  
  size_t sdslen(const sds s) {
 	 struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
 	 return sh->len;
  }
- ֪����������ɣ�����Ժ����׵��������Ĺ���sds.c��
+ 知道了这个技巧，你可以很容易地完成其余的功能sds.c。
  
- Redis�ַ���ʵ��������ֻ�����ַ�ָ��Ľӿں��档Redis�ַ������û����������ʵ�ַ�ʽ������Redis�ַ�����Ϊ�ַ�ָ�롣
+ Redis字符串实现隐藏在只接受字符指针的接口后面。Redis字符串的用户无需关心其实现方式，并将Redis字符串视为字符指针。
 
  */
 
@@ -77,13 +77,15 @@ typedef char *sds;
 
 
 /*
-��buf�ַ�����洢ʵ�ʵ��ַ����� 
-��len�ֶδ洢����buf����ʹ�û��Redis�ַ����ĳ���ΪO��1�������� 
-��free�ֶδ洢�ɹ�ʹ�õĸ����ֽ����� 
-���Խ�len��free�ֶ�һ����Ϊ����buf�ַ������Ԫ���ݡ� 
-����Redis�ַ��� ��Ϊ������������sds����sds.hΪ�ַ�ָ���ͬ��ʣ�
+该buf字符数组存储实际的字符串。 
+该len字段存储长度buf。这使得获得Redis字符串的长度为O（1）操作。 
+该free字段存储可供使用的附加字节数。 
+可以将len和free字段一起视为保存buf字符数组的元数据。 
+创建Redis字符串 名为的新数据类型sds定义sds.h为字符指针的同义词：
 
 */
+
+// 这个字符串的定义 free起到了非常牛逼的的作用,对于不停重复的申请内容操作可以大大的节省空间
 struct sdshdr {
     long len;
     long free;
