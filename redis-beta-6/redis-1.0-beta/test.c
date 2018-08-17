@@ -73,8 +73,63 @@ test_mon_log(){
     int i=mon_log("%s,%d,%d,%d","asd",2,3,4);
     printf("%d\n",i);
 }
+
+#include <string.h>
+#include <stdio.h>
+int test_str(void)
+{
+    char string[17];
+    char *ptr,c='r';
+    strcpy(string,"Thisisastring");
+    ptr=strchr(string,c);
+    if(ptr)
+        printf("The character %cis at position:%s\n",c,ptr);
+    else
+        printf("The character was not found\n");
+    return 0;
+}
+
+
+
+int   testMemCpy(){
+
+    char buff[10] = {"123456789"};
+    printf("buff is %s\n",buff);
+
+    char *start1 , *end2, *start2, *end1;
+
+    int len = 4;
+
+
+    // buf1 1234
+    // buf2   3456
+    // buf1 和buf 2 重叠部分是34
+    start1 = buff;
+    end1 = start1 + len;
+    start2 = end1 - 2;
+    end2 = start2 + 4;
+    // so  buf1 = 1234
+    // so  buf2 = 3456
+
+   // memcpy(start2,start1,4);
+    //except 121234789    output:  121234789
+
+    memmove(start2,start1,4);
+    //except 121234789    output:  121234789
+	/*
+	---------- run exe ----------
+	buff is 123456789
+	buff is 121234789 
+	*/
+
+	// 经过测试并没有发现memcpy 所传的bug,不过在使用的时候还是尽量优先的使用memmove
+    printf("buff is %s\n",buff);
+    return 0;
+}
+
 int main()
 {
-test_mon_log();
+    testMemCpy();
+    test_str();
     return 0;
 }

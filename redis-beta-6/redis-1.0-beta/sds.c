@@ -325,6 +325,7 @@ sds sdstrim(sds s, const char *cset) {
  *
  * s = sdsnew("Hello World");
  * sdsrange(s,1,-1); => "ello World"
+ * 开始和结束的位置随意   不过写的过大  就认为从头开始
  */
 // 字符串排序么?
 sds sdsrange(sds s, long start, long end) {
@@ -355,6 +356,9 @@ sds sdsrange(sds s, long start, long end) {
     }
 
     // 这里用memove使得IO性能有所提升?
+    // memmove 和memcpy功能是一样的
+    // memmove 在考虑到内存覆盖是反向拷贝,正确执行结果
+    // 不过现在所用的gcc-4.8-2得到的结果是一样的  都是和memmove结果相同的
     if (start != 0) memmove(sh->buf, sh->buf+start, newlen);
     sh->buf[newlen] = 0;
     sh->free = sh->free+(sh->len-newlen);
@@ -362,18 +366,23 @@ sds sdsrange(sds s, long start, long end) {
     return s;
 }
 
+
+// sdstolower("sSs")   output=>sss
 void sdstolower(sds s) {
     int len = sdslen(s), j;
-
+    // 将每个字符都改成小写
     for (j = 0; j < len; j++) s[j] = tolower(s[j]);
 }
+// sdstolower("sSs")   output=>SSS
 
 void sdstoupper(sds s) {
     int len = sdslen(s), j;
-
+    // 将每个字符都改成大写
     for (j = 0; j < len; j++) s[j] = toupper(s[j]);
 }
 
+
+// 比较字符串大小  
 int sdscmp(sds s1, sds s2) {
     size_t l1, l2, minlen;
     int cmp;
@@ -381,7 +390,11 @@ int sdscmp(sds s1, sds s2) {
     l1 = sdslen(s1);
     l2 = sdslen(s2);
     minlen = (l1 < l2) ? l1 : l2;
+
+    // 这里的实现 拷贝IO优化  每次跳4个字节  达到优化的效果
     cmp = memcmp(s1,s2,minlen);
+
+    // 一切基于 动态内存设计
     if (cmp == 0) return l1-l2;
     return cmp;
 }
@@ -402,18 +415,27 @@ int sdscmp(sds s1, sds s2) {
  * requires length arguments. sdssplit() is just the
  * same function but for zero-terminated strings.
  */
+
+// 长度安全的  功能和 sdssplit("foo_-_bar","_-_") 差不多 
+// 只不过添加了长度 使得函数是长度安全的
+
 sds *sdssplitlen(char *s, int len, char *sep, int seplen, int *count) {
     int elements = 0, slots = 5, start = 0, j;
 
+    // 申请5个卡槽的位置?
     sds *tokens = malloc(sizeof(sds)*slots);
 #ifdef SDS_ABORT_ON_OOM
     if (tokens == NULL) sdsOomAbort();
 #endif
     if (seplen < 1 || len < 0 || tokens == NULL) return NULL;
+
+
     for (j = 0; j < (len-(seplen-1)); j++) {
         /* make sure there is room for the next element and the final one */
         if (slots < elements+2) {
             slots *= 2;
+
+            // 如果卡槽不够大  那么 重新申请
             sds *newtokens = realloc(tokens,sizeof(sds)*slots);
             if (newtokens == NULL) {
 #ifdef SDS_ABORT_ON_OOM
