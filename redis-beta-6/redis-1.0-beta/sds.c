@@ -235,6 +235,7 @@ sds sdscpy(sds s, char *t) {
 
 // 通过格式化的方式来写入字符串
 sds sdscatprintf(sds s, const char *fmt, ...) {
+    
     va_list ap;
     char *buf, *t;
     size_t buflen = 32;
@@ -248,7 +249,12 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
         if (buf == NULL) return NULL;
 #endif
         buf[buflen-2] = '\0';
+
+        // ...省略的是后面实际的参数,fmt其实就是确定了参数的个数
+        // vsnprintf(dest,safeLen,"%s%d%x",arg1,arg2,arg3)
         vsnprintf(buf, buflen, fmt, ap);
+
+        // 说明写完字符串之后  '\0'被覆盖了  说明字符串长度不够
         if (buf[buflen-2] != '\0') {
             free(buf);
             buflen *= 2;
@@ -257,11 +263,28 @@ sds sdscatprintf(sds s, const char *fmt, ...) {
         break;
     }
     va_end(ap);
+
+    // 连接字符串
     t = sdscat(s, buf);
     free(buf);
     return t;
 }
 
+/* Remove the part of the string from left and from right composed just of
+ * contiguous characters found in 'cset', that is a null terminted C string.
+ *
+ * After the call, the modified sds string is no longer valid and all the
+ * references must be substituted with the new pointer returned by the call.
+ *
+ * Example:
+ *
+ * s = sdsnew("AA...AA.a.aa.aHelloWorld     :::");
+ * s = sdstrim(s,"Aa. :");
+ * printf("%s\n", s);
+ *
+ * Output will be just "Hello World".
+ */
+// 去掉头尾出现的字符串 cset
 sds sdstrim(sds s, const char *cset) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     char *start, *end, *sp, *ep;
@@ -269,29 +292,59 @@ sds sdstrim(sds s, const char *cset) {
 
     sp = start = s;
     ep = end = s+sdslen(s)-1;
+
+    // 每次拿出一个字符串 与要去掉的字符串做比较  找到并且去除 
+    // 这个操作只是对首位字符串进行剔除,如果在中间 仍然保持不变
     while(sp <= end && strchr(cset, *sp)) sp++;
     while(ep > start && strchr(cset, *ep)) ep--;
+
+    // 如果从头到尾剔除 向前移动位数大于字符总长度 字符长度取0 
+    // 不然字符长度 取二者相减 + 1
     len = (sp > ep) ? 0 : ((ep-sp)+1);
     if (sh->buf != sp) memmove(sh->buf, sp, len);
     sh->buf[len] = '\0';
+
+    //为空字符设置长度
     sh->free = sh->free+(sh->len-len);
     sh->len = len;
     return s;
 }
 
+/* Turn the string into a smaller (or equal) string containing only the
+ * substring specified by the 'start' and 'end' indexes.
+ *
+ * start and end can be negative, where -1 means the last character of the
+ * string, -2 the penultimate character, and so forth.
+ *
+ * The interval is inclusive, so the start and end characters will be part
+ * of the resulting string.
+ *
+ * The string is modified in-place.
+ *
+ * Example:
+ *
+ * s = sdsnew("Hello World");
+ * sdsrange(s,1,-1); => "ello World"
+ */
+// 字符串排序么?
 sds sdsrange(sds s, long start, long end) {
     struct sdshdr *sh = (void*) (s-(sizeof(struct sdshdr)));
     size_t newlen, len = sdslen(s);
 
     if (len == 0) return s;
+
+    // 小于零做减法移动指针
     if (start < 0) {
         start = len+start;
         if (start < 0) start = 0;
     }
+    // 小于零移动指针
     if (end < 0) {
         end = len+end;
         if (end < 0) end = 0;
     }
+
+    // 即使输入开始位置大于结束位置  那么从0开始
     newlen = (start > end) ? 0 : (end-start)+1;
     if (newlen != 0) {
         if (start >= (signed)len) start = len-1;
@@ -300,6 +353,8 @@ sds sdsrange(sds s, long start, long end) {
     } else {
         start = 0;
     }
+
+    // 这里用memove使得IO性能有所提升?
     if (start != 0) memmove(sh->buf, sh->buf+start, newlen);
     sh->buf[newlen] = 0;
     sh->free = sh->free+(sh->len-newlen);
