@@ -14,6 +14,13 @@
 #include <assert.h>
 #include "dict.h"
 
+
+/*
+如何使用哈希算法？
+
+如何与其他数据结构一同使用？
+
+*/
 /* ---------------------------- Utility funcitons --------------------------- */
 
 static void _dictPanic(const char *fmt, ...)
@@ -28,7 +35,7 @@ static void _dictPanic(const char *fmt, ...)
 }
 
 /* ------------------------- Heap Management Wrappers------------------------ */
-
+/*                           堆管理器封装                    */
 static void *_dictAlloc(int size)
 {
     void *p = malloc(size);
