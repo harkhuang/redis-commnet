@@ -23,6 +23,8 @@
 */
 /* ---------------------------- Utility funcitons --------------------------- */
 
+
+//格式化输出错误信息到 stderr
 static void _dictPanic(const char *fmt, ...)
 {
     va_list ap;
@@ -36,6 +38,9 @@ static void _dictPanic(const char *fmt, ...)
 
 /* ------------------------- Heap Management Wrappers------------------------ */
 /*                           堆管理器封装                    */
+
+
+// 申请空间 大小为size返回  可用空间指针
 static void *_dictAlloc(int size)
 {
     void *p = malloc(size);
@@ -44,20 +49,26 @@ static void *_dictAlloc(int size)
     return p;
 }
 
+
+// 释放ptr指针
 static void _dictFree(void *ptr) {
     free(ptr);
 }
 
 /* -------------------------- private prototypes ---------------------------- */
-
+//扩展hash?
 static int _dictExpandIfNeeded(dict *ht);
+// ???
 static unsigned int _dictNextPower(unsigned int size);
+// 索引??
 static int _dictKeyIndex(dict *ht, const void *key);
+// 初始化哈希表
 static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 
 /* -------------------------- hash functions -------------------------------- */
 
 /* Thomas Wang's 32 bit Mix Function */
+// 根据key生成hash值,即对应的内存地址?
 unsigned int dictIntHashFunction(unsigned int key)
 {
     key += ~(key << 15);
@@ -70,6 +81,7 @@ unsigned int dictIntHashFunction(unsigned int key)
 }
 
 /* Identity hash function for integer keys */
+// 用key返回key????
 unsigned int dictIdentityHashFunction(unsigned int key)
 {
     return key;
@@ -89,15 +101,20 @@ unsigned int dictGenHashFunction(const unsigned char *buf, int len) {
 
 /* Reset an hashtable already initialized with ht_init().
  * NOTE: This function should only called by ht_destroy(). */
+
+// 重置hashtable  也可以叫初始化  同时清除的时候调用做数据清理
 static void _dictReset(dict *ht)
 {
     ht->table = NULL;
     ht->size = 0;
+
+    // 这个掩码初始化为0???
     ht->sizemask = 0;
     ht->used = 0;
 }
 
 /* Create a new hash table */
+// malloc 一个新的hashtable
 dict *dictCreate(dictType *type,
         void *privDataPtr)
 {
@@ -107,7 +124,13 @@ dict *dictCreate(dictType *type,
     return ht;
 }
 
+
+//为hashtable 初始化  设置type 
+// 但是type函数指针在哪里做的初始化
+//并没有看到在哪里定义了tyepe的函数指针啊
 /* Initialize the hash table */
+
+// 
 int _dictInit(dict *ht, dictType *type,
         void *privDataPtr)
 {
@@ -119,6 +142,8 @@ int _dictInit(dict *ht, dictType *type,
 
 /* Resize the table to the minimal size that contains all the elements,
  * but with the invariant of a USER/BUCKETS ration near to <= 1 */
+
+//  重新设置hash表的大小
 int dictResize(dict *ht)
 {
     int minimal = ht->used;
@@ -129,9 +154,18 @@ int dictResize(dict *ht)
 }
 
 /* Expand or create the hashtable */
+
+/*
+扩展或者创建hash表  
+size   扩展的元素总个数
+
+每次哈希表的扩展都需要拷贝很多内容到新的空间去
+
+
+*/
 int dictExpand(dict *ht, unsigned int size)
 {
-    dict n; /* the new hashtable */
+    dict n; /* the new hashtable */  // 一个栈上空间
     unsigned int realsize = _dictNextPower(size), i;
 
     /* the size is invalid if it is smaller than the number of
@@ -139,12 +173,20 @@ int dictExpand(dict *ht, unsigned int size)
     if (ht->used > size)
         return DICT_ERR;
 
+    // 这里疑问在于ht->type并没有赋值 
+    // 哪里来的函数指针呢?
     _dictInit(&n, ht->type, ht->privdata);
     n.size = realsize;
+
+    // 掩码真正的值是  size大小-1
     n.sizemask = realsize-1;
+
+
+    // 为哈希表分配了空间  空间大小是dictEntry的新大小
     n.table = _dictAlloc(realsize*sizeof(dictEntry*));
 
     /* Initialize all the pointers to NULL */
+    // 为二级指针清空操作
     memset(n.table, 0, realsize*sizeof(dictEntry*));
 
     /* Copy all the elements from the old to the new table:
@@ -157,12 +199,22 @@ int dictExpand(dict *ht, unsigned int size)
         if (ht->table[i] == NULL) continue;
         
         /* For each hash entry on this slot... */
+        // hash element 在表中的i个位置
         he = ht->table[i];
         while(he) {
             unsigned int h;
 
             nextHe = he->next;
             /* Get the new element index */
+            // 就是一个哈希元素,里面有所有的哈希信息
+            // h 就是哈希值的位置
+            // 哈希值和mask取交集
+            // mask 是位  初始的是  1111  每次扩展加1  那么以二次幂数及增长
+
+            // 这个值如何均匀分布的????  
+            // 名字是随机写的但是分布要是均匀的如何做到的?
+            // 获取该元素在表中的位置
+            // 这只是一个函数指针   但是并没有看到给函数指针赋值的操作
             h = dictHashKey(ht, he->key) & n.sizemask;
             he->next = n.table[h];
             n.table[h] = he;
@@ -390,6 +442,7 @@ static int _dictExpandIfNeeded(dict *ht)
 }
 
 /* Our hash table capability is a power of two */
+// 乘以二的大小扩展
 static unsigned int _dictNextPower(unsigned int size)
 {
     unsigned int i = DICT_HT_INITIAL_SIZE;
