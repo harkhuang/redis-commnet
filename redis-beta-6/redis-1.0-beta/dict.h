@@ -72,11 +72,12 @@ typedef struct dict {
 } dict;
 
 // 一个哈希表的迭代器指针
+
 typedef struct dictIterator {
     // 哈希表指针
     dict *ht;// 哈希表指针
-    int index;//索引项
-    dictEntry *entry, *nextEntry;//当前项和下一项
+    int index;//索引项  表示当前位置 ???? 
+    dictEntry *entry, *nextEntry;//  当前项 和 下一项
 } dictIterator;
 
 /* This is the initial size of every hash table */

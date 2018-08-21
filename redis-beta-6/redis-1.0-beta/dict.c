@@ -279,6 +279,9 @@ static int dictGenericDelete(dict *ht, const void *key, int nofree)
 
     if (ht->size == 0)
         return DICT_ERR;
+
+
+        // 调用获取hash值  与  掩码取交集
     h = dictHashKey(ht, key) & ht->sizemask;
     he = ht->table[h];
 
@@ -353,6 +356,9 @@ dictEntry *dictFind(dict *ht, const void *key)
     if (ht->size == 0) return NULL;
     h = dictHashKey(ht, key) & ht->sizemask;
     he = ht->table[h];
+
+    // 解决同名问题
+    // 如果解决同名问题 那么hash的大小怎么确定呢?
     while(he) {
         if (dictCompareHashKeys(ht, key, he->key))
             return he;
@@ -361,28 +367,37 @@ dictEntry *dictFind(dict *ht, const void *key)
     return NULL;
 }
 
+// 生成一个迭代器指针
 dictIterator *dictGetIterator(dict *ht)
 {
     dictIterator *iter = _dictAlloc(sizeof(*iter));
 
     iter->ht = ht;
-    iter->index = -1;
+    iter->index = -1;  // 表示索引的位置吗??
+
+    // 不懂为什么要指向下一个和当前呢??
+    // 迭代器指针串联起来靠的是下面的结构体吗
     iter->entry = NULL;
     iter->nextEntry = NULL;
     return iter;
 }
 
+// 一个遍历hash的操作 
+
 dictEntry *dictNext(dictIterator *iter)
 {
     while (1) {
+        // 遇到空指针跳过
         if (iter->entry == NULL) {
-            iter->index++;
+            iter->index++;// 标记次数 和 当前的位置
             if (iter->index >=
                     (signed)iter->ht->size) break;
+            /** ?? */
             iter->entry = iter->ht->table[iter->index];
         } else {
             iter->entry = iter->nextEntry;
         }
+
         if (iter->entry) {
             /* We need to save the 'next' here, the iterator user
              * may delete the entry we are returning. */
@@ -392,6 +407,7 @@ dictEntry *dictNext(dictIterator *iter)
     }
     return NULL;
 }
+/**释放迭代器 */
 
 void dictReleaseIterator(dictIterator *iter)
 {
@@ -400,6 +416,10 @@ void dictReleaseIterator(dictIterator *iter)
 
 /* Return a random entry from the hash table. Useful to
  * implement randomized algorithms */
+/**
+ * 获取一个随机入口
+ * 提升效率
+ */
 dictEntry *dictGetRandomKey(dict *ht)
 {
     dictEntry *he;
