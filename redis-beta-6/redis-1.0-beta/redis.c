@@ -527,6 +527,7 @@ static void initServerConfig() {
     server.logfile = NULL; /* NULL = log on standard output */
     ResetServerSaveParams();
 
+// do what 设置缓冲 根据 和服务大小么？
     appendServerSaveParams(60*60,1);  /* save after 1 hour and 1 change */
     appendServerSaveParams(300,100);  /* save after 5 minutes and 100 changes */
     appendServerSaveParams(60,10000); /* save after 1 minute and 10000 changes */
@@ -540,7 +541,7 @@ static void initServer() {
 
     server.clients = listCreate();
     server.objfreelist = listCreate();
-    createSharedObjects();
+    createSharedObjects();// 这里创建了loop
     server.el = aeCreateEventLoop();
     server.dict = malloc(sizeof(dict*)*server.dbnum);
     if (!server.dict || !server.clients || !server.el || !server.objfreelist)
@@ -1792,13 +1793,11 @@ int __test_num = 0;
 
 #endif
 
-int main(int argc, char **argv) {
 
 
-#define TEST_SDS_H 1
-#if TEST_SDS_H  
-
-//把sds理解成string
+void mytestsds()
+{
+    //把sds理解成string
 /*
 proc memory like this
 0x0001 0x0002 0x0003  .... 0x003+free+len
@@ -1811,11 +1810,8 @@ sh            sh->buf
 所以在计算长度的时候redis用来骚操作  buf-sizeof(struct sds)
 */
 printf("=test1 sdsnewlen()\n");
-
 sds testsds1 = sdsnewlen("redis", 5);
 printf("=sdsnewlen return sds testsds1 is:%s \n", testsds1);
-
-
 printf("=test2 sdsnewlen()\n" );
 sds testsds2 = sdsnewlen(testsds1, 10);
 printf(":%s \n", testsds1);
@@ -1825,20 +1821,10 @@ printf("mylen3=%d \n",( (struct sdshdr*)(&testsds2 -sizeof(struct sdshdr)))->len
 printf("redislen4=%d \n", sdslen(testsds2));
 printf("mylen5=%d \n",( (struct sdshdr*)(testsds2 -sizeof(struct sdshdr)))->len);
 
+}
 
 
-//printf("=sdsnewlen return sds len is:%d \n", ((struct sdshdr*) (testsds2 - (sizeof(struct sdshdr))->len);
-
-
-
-
-
-#endif
-
-
-
-#if _REDIS_
-
+int main(int argc, char **argv) {
 
     initServerConfig();
     initServer();
@@ -1847,7 +1833,7 @@ printf("mylen5=%d \n",( (struct sdshdr*)(testsds2 -sizeof(struct sdshdr)))->len)
         loadServerConfig(argv[1]);
         redisLog(REDIS_NOTICE,"Configuration loaded");
     } else if (argc > 2) {
-        fprintf(stderr,"Usage: ./redis-server [/path/to/redis.conf]\n");
+        fprintf(stderr,"Usage: ./redis-server [./redis.conf]\n");
         exit(1);
     }
     redisLog(REDIS_NOTICE,"Server started");
@@ -1859,5 +1845,4 @@ printf("mylen5=%d \n",( (struct sdshdr*)(testsds2 -sizeof(struct sdshdr)))->len)
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
     return 0;
-#endif
 }
