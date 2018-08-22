@@ -1844,7 +1844,7 @@ void mytest_cond(){
     test_cond("test new('redis')",sdsnew("redis"));
     test_report();
 
-    test_cond();
+
 }
 
 int main(int argc, char **argv) {

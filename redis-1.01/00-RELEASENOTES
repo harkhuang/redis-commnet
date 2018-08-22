@@ -1,0 +1,7 @@
+Welcome to Redis 1.01
+
+This is a bug fix release addressing just a single moderately critical bug.
+
+CHANGELOG for Redis 1.01
+
+2009-09-17 maxmemory didn't worked in 64 systems for values > 4GB since it used to be an unsigned int. Fixed
