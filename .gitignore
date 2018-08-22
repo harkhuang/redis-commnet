@@ -25,4 +25,8 @@ redis-test
 redis-beta-6/redis-1.0-beta/redis-test
 *.make
 *.dir
-redis-beta-6/redis-1.0-beta/a.out
+a.out
+BUGS
+COPYING
+Changelog
+README
