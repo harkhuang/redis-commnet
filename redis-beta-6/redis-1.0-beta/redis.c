@@ -79,21 +79,35 @@ typedef struct redisClient {
 } redisClient;
 
 /* A redis object, that is a type able to hold a string / list / set */
+/*
+所谓的能装下各种类型是何故？
+*/
 typedef struct redisObject {
     int type;
     void *ptr;
     int refcount;
 } robj;
 
+
+/**
+ * 保存参数？ 神马参数*/
 struct saveparam {
     time_t seconds;
     int changes;
 };
 
 /* Global server state structure */
+
+/**
+ * 一个个梳理
+ * 服务端要做的事情很多 ，但是有了下面的结构  就可以从容面对
+*/
 struct redisServer {
+    /*端口*/
     int port;
+    /*socket 文件描述符？*/
     int fd;
+    /*但进程服务保存了哈希表的指针*/
     dict **dict;
     long long dirty;            /* changes to DB from the last save */
     list *clients;
@@ -1815,17 +1829,29 @@ printf("=sdsnewlen return sds testsds1 is:%s \n", testsds1);
 printf("=test2 sdsnewlen()\n" );
 sds testsds2 = sdsnewlen(testsds1, 10);
 printf(":%s \n", testsds1);
-printf("mylen1=%d \n",( (struct sdshdr*) (&testsds2-sizeof(struct sdshdr)))->len);// error 
-printf("mylen2=%d \n",( (struct sdshdr*) (&testsds2-sizeof(struct sdshdr)))->len);
-printf("mylen3=%d \n",( (struct sdshdr*)(&testsds2 -sizeof(struct sdshdr)))->len);
-printf("redislen4=%d \n", sdslen(testsds2));
-printf("mylen5=%d \n",( (struct sdshdr*)(testsds2 -sizeof(struct sdshdr)))->len);
+printf("mylen1=%ld \n",( (struct sdshdr*) (&testsds2-sizeof(struct sdshdr)))->len);// error 
+printf("mylen2=%ld \n",( (struct sdshdr*) (&testsds2-sizeof(struct sdshdr)))->len);
+printf("mylen3=%ld \n",( (struct sdshdr*)(&testsds2 -sizeof(struct sdshdr)))->len);
+printf("redislen4=%ld \n", sdslen(testsds2));
+printf("mylen5=%ld \n",( (struct sdshdr*)(testsds2 -sizeof(struct sdshdr)))->len);
 
 }
 
+void mytest_cond(){
+    test_cond("test new('redis')",sdsnew("redis"));
+    test_cond("test new('redis12312312312321333333')",sdsnew("redis"));
+    test_cond("test new('000')",sdsnew("redis"));
+    test_cond("test new('redis')",sdsnew("redis"));
+    test_report();
+
+    test_cond();
+}
 
 int main(int argc, char **argv) {
+    #if   1
+    mytest_cond();
 
+    #else
     initServerConfig();
     initServer();
     if (argc == 2) {
@@ -1844,5 +1870,6 @@ int main(int argc, char **argv) {
     redisLog(REDIS_NOTICE,"The server is now ready to accept connections");
     aeMain(server.el);
     aeDeleteEventLoop(server.el);
+    #endif 
     return 0;
 }
