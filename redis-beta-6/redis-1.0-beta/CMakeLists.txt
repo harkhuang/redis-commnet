@@ -4,9 +4,10 @@ cmake_minimum_required(VERSION 2.6)
 set( CMAKE_BUILD_TYPE Debug )
 include_directories(${CMAKE_SOURCE_DIR} )
 aux_source_directory(src ${CMAKE_SOURCE_DIR} )
+include_directories(.)
 #add_executable(test adlist.c  ae.c  anet.c  dict.c  main.c  picol.c	redis.c  sds.c ${src})
 add_compile_options("-g")
-add_executable(redis-test adlist.c  ae.h ae.c picol.c  dict.c  anet.c  redis.c sds.c )
+add_executable(redis-test adlist.c adlist.h ae.h ae.c picol.c dict.h dict.c  anet.h anet.c redis.c sds.h sds.c )
 
 
 #可以同时添加多个目标
